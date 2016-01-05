@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+
+<html>
+	<style> div{font-size: .9em; font-family:"Tahoma";}
+			p{font-size:1em; font-family:"Tahoma";}
+
+			div#gui{
+				position:absolute; left:170px; top:70px;
+				width:350px;visibility:hidden;
+				height:130px;
+				background-color: #959595;
+				padding: 10px 0 0 20px;
+				border:1px solid #000;
+			}
+			div#gui div {margin-top:10px;}
+			
+	 </style>
+	<canvas id ="canvas" width="800px" height="600px" style="background-color:#333;border:1px solid black"></canvas>
+	<div id = "gui">
+
+
+		<div id = 'wins'>
+		Player who wins plays again:  
+			Yes <input id= "Y" type = "radio" name = "autoLen" value = "Auto" checked>
+  			   No <input id= "N" type = "radio" name = "autoLen" value = "manual"> 
+  		</div>
+
+  		<div id = "ratBar">
+  			<label>Display Score Ratio:</label>
+  			<select id="opts">
+  				<option value = "no">Do not display</option>
+  				<option value = "bar">Graphic Bar</option>
+  				<option value = "num">Decimal</option>
+  			</select>
+  		</div>
+
+  		<div id = 'colors'>
+  			<p>Player Colors: &nbsp &nbsp<input type='color' id='c1' value="#ff0000"/>
+  				<input type ='color' id ='c2' value="#0000ff" /> </p>
+  		</div>
+
+  		<div id = "bReset">
+  			<button id="newG" style="visibility:hidden" onclick="reset()">New Game</button>
+  		</div>
+	</div>
+	<body>
+	</body>
+	<script>		
+
+	var can = document.getElementById("canvas"), 
+	elemLeft = can.offsetLeft,
+	elemTop = can.offsetTop,
+	ctx = can.getContext("2d");
+	var currentScoreA = currentScoreB = 0;
+	var guiElm = document.getElementById("gui").style;
+	var colorSpots = [];
+	var colorLines = [];
+	var colorBoxes = [];
+	var selected = [];
+	var first;
+	var last;
+	var tempLine;
+	var turn = 1;
+	var p1Move, p2Move;
+	var lastChosen;
+	var dH = false;
+	var dV = false;
+	var updateLine = setInterval(checkCord,50);
+	var cX = cY = 0;
+	var gearX = 180, gearY = 48;
+	var update = false;
+	var tempCorner = [];
+	var clickSetting = false;
+	var hoverSet = false;
+	var rolling = false, finish = false;
+	var p1C = document.getElementById("c1").value;
+	var p2C = document.getElementById("c2").value;
+	var lastChangedC1 = "#ff0000", lastChangedC2 = "#0000ff";
+	var gearC = "#cdcdcd";
+
+
+	canvas.addEventListener('click', handleclick, false);
+
+
+	window.onload = function()
+	{
+		p1Move=true;
+		p2Move=false;
+		first=true;
+	}
+
+	function hasColorsChanged()
+	{
+
+		console.log(p1C,p2C); 
+		if(p1C!=lastChangedC1 || p2C!=lastChangedC2)
+		{
+			return true;
+		}
+		return false;
+	}
+	function drawScore()
+	{
+
+		ctx.save();
+		if(currentScoreA+currentScoreB>=45)
+		{
+			gameOver=true;
+		}
+		ctx.font = "bold 20pt 'Courier New'";
+		ctx.fillStyle = p1C;
+		ctx.shadowColor = 'white';
+		ctx.shadowBlur = 2;
+		ctx.shadowOffsetX = .7;
+		ctx.fillText(currentScoreA,20,canvas.height-30);
+		ctx.fillStyle = p2C;
+		ctx.fillText(currentScoreB,canvas.width-40,canvas.height-30);
+		ctx.restore();
+
+	}
+	function gameOverGUI()
+	{
+		gameOver=true;
+		//ctx.fillStyle = "#d6d6d6";
+		//ctx.fillRect(150,30,500,400);
+		clickSetting = true;
+	}
+	function drawRatioBar(isBar)
+	{
+		if(isBar){ratioNum=false;}
+		else{ratioBar=false;}
+		var posx1 = can.width*.1;
+		var y1 = can.height-50;
+		var y2 = can.height-20;
+		var barW = can.width*.8;
+		var half = (posx1+barW)/2;
+
+		//P1C and p2C are global variables 
+		if(currentScoreA == 0 || currentScoreB == 0)
+		{
+			var w;
+			ctx.font= "Arial 20pt";
+
+			if(currentScoreA>0){
+				ctx.fillStyle=p1C; 
+				if(!isBar){
+					ctx.fillStyle="#fff";
+					ctx.fillText("1 : 0",half,y2);}
+			}
+			else if(currentScoreB>0){
+				ctx.fillStyle = p2C;
+				if(!isBar){
+					ctx.fillStyle="#fff";
+					ctx.fillText("0 : 1",half,y2);}
+			}
+			else{
+				ctx.fillStyle = "#cdcdcd";
+				if(!isBar){
+					ctx.fillStyle="#fff";
+					ctx.fillText("0 : 0",half,y2);}
+			}
+			if(isBar)
+				ctx.fillRect(posx1,y1,barW,30);
+		}
+		else{
+			var totalS = currentScoreA+currentScoreB;
+			var ratioA = Math.floor(10*(currentScoreA/totalS))/10;
+			var ratioB = Math.floor(10*(currentScoreB/totalS))/10;
+
+			var posx2 = ratioA*(barW);
+			if(isBar){
+				ctx.fillStyle = p1C;
+				ctx.fillRect(posx1,y1,posx2-3,30);
+				ctx.fillStyle = p2C;
+				ctx.fillRect(posx1+posx2,y1,barW-posx2,30);
+				ctx.strokeStyle = "#000";
+				ctx.lineWidth = 6;
+				ctx.strokeRect(posx1,y1,barW,30);}
+			else{
+				ctx.fillStyle=p1C;
+				ctx.font = "Arial 20pt";
+				ctx.fillText(ratioA,half,y2);
+				ctx.fillStyle="#fff";
+				ctx.fillText(":",half+ctx.measureText("00: ").width,y2-3);
+				ctx.fillStyle=p2C;
+				ctx.fillText(ratioB,half+ctx.measureText("00   : ").width,y2);
+			}
+		}
+		
+		ctx.restore();
+		
+	}
+	function handleclick()
+	{
+
+		var x = parseInt(event.pageX-elemLeft), 
+		y = parseInt(event.pageY-elemTop);
+		var pt = new Point(x,y);
+		var wonPoint = false;
+		var hit;
+		var newDot;
+		//console.log(x,y); // location of click
+
+		checkingSpots:
+		if(newGame)
+		{
+			if(x>=345&&x<=455 && y>=290&&y<=355)
+			{
+				showSetting = false;
+				showBoard = true;
+				newGame = false;
+			}
+			if(cX>=160&&cX<=290 && cY>=30&&cY<=60){ 
+				if(!clickSetting){clickSetting=true;}
+				else{clickSetting=false;}
+			}
+			
+		}
+		else{
+			if(cX>=15&&cX<=30&&cY>=15&&cY<=30){
+				showSetting = true;
+			}
+			if(showSetting)
+			{
+				if(cX<=205&&cX>=155&&cY>=35&&cY<=80)
+				{
+					closeGuI();
+				}
+			}
+			for(var i = 0;i<colorSpots.length;i++)
+			{
+				var dot = colorSpots[i];
+
+				if(checkHit(pt,dot))
+				{
+					if(dot==last){
+						console.log(dot,last);
+					break checkingSpots;
+					}
+
+					var c;
+					if(p1Move){c=p1C;}
+					else{c=p2C;}
+					if(turn%2==0){
+
+						if(isNeighbor(last,dot)){
+							newDot = coloredPt(dot,c);
+							selected.push(dot);
+							turn++;
+							var nLine = new Line(last,dot,c);
+							if(checkLines(nLine)){
+								colorLines.push(nLine);
+								clearInterval(updateLine);
+								if(madeBox(nLine))
+								{
+									var ind,ind1;
+									if(tempCorner.length>=1){
+										ind = getIndex(tempCorner[0]);
+										var cBox = new box(ind,c);
+										colorBoxes.push(cBox);}
+									if(tempCorner.length==2)
+									{
+										ind1 = getIndex(tempCorner[1]);
+										var cBox1 = new box(ind1,c);
+										colorBoxes.push(cBox1);
+
+									}
+
+									if(document.getElementById("Y").checked){
+										wonPoint = true;}
+									var inc = 1;
+									if(dH||dV){inc=2;}
+									if(c==p1C){currentScoreA+=inc;}
+									else{currentScoreB+=inc;}
+									dH=false;dV=false;
+								}
+							}
+							else{
+								break checkingSpots;
+							}
+						}
+					}
+					else{
+						tempCorner.length = 0;
+						selected.push(dot);
+						turn++;
+						last =  new Point(dot.X,dot.Y)
+						var tpt = new Point(cX,cY);
+						tempLine = new Line(last,tpt,c);
+		
+					}
+					if((turn-1)%2==0 && !wonPoint){flip();}
+					wontPoint=false;
+
+				}
+			}
+		}
+	}
+
+	function checkLines(line)
+	{
+		if(turn>2){
+			for(var i = 0;i<colorLines.length;i++){
+				var pt1 = colorLines[i].pt1;
+				var pt2 = colorLines[i].pt2;
+
+				//console.log("comparing: " +line.pt1.X,line.pt2.Y + ","+line.pt2.X,line.pt2.Y+","+pt1.X,pt2.Y+","+pt2.X,pt2.Y);
+				if( (equalPts(line.pt1,pt1)&&equalPts(line.pt2,pt2)) || (equalPts(line.pt1,pt2)&&equalPts(line.pt2,pt1)) )
+				{
+					return false;
+				}				
+			}
+			return true;
+
+		}
+		return true;
+	}
+	function drawseg()
+	{
+		var c;
+		if(p1Move){c=p1C;}
+		else{c=p2C;}
+		ctx.strokeStyle = c;
+		var cur = new Point(cX,cY);
+		var L = new Line(last,cur,c)
+		drawLine(L);
+	}
+
+	function madeBox(line)   // make it so that two boxes can be added at once
+	{
+		var pt1 = line.pt1;
+		var pt2 = line.pt2;
+
+		if(pt1.X==pt2.X) //vertical line
+		{	
+
+			//Check three right
+			var hit = 0;
+			var ptTA = new Point(pt1.X+70,pt1.Y);
+			var ptTB = new Point(pt2.X+70,pt2.Y);
+			var ptTC = new Point(pt1.X-70,pt1.Y);
+			var ptTD = new Point(pt2.X-70,pt2.Y);			
+			var line1 = new Line(pt1,ptTA);
+			var line2 = new Line(pt2,ptTB);
+			var line3 = new Line(ptTA,ptTB);
+			var line4 = new Line(pt1,ptTC);
+			var line5 = new Line(pt2,ptTD);
+			var line6 = new Line(ptTC,ptTD);
+
+			if(!checkLines(line1)&& !checkLines(line2) && !checkLines(line3)){
+				selectCorner(line,line1,line2,line3);
+				hit++;}
+			if(!checkLines(line4)&& !checkLines(line5) && !checkLines(line6)){
+				selectCorner(line,line4,line5,line6);
+				hit++;}
+			if(hit==0){return false;}
+			else if(hit ==1){return true;}
+			else {dV = true; 
+				console.log("hit both");
+				return true;}
+
+		}
+		else if(pt1.Y==pt2.Y) //horziontal
+		{	
+
+			var hit = 0;
+			//Check above
+			var ptTA = new Point(pt1.X,pt1.Y+70);
+			var ptTB = new Point(pt2.X,pt2.Y+70);
+			var ptTC = new Point(pt1.X,pt1.Y-70);
+			var ptTD = new Point(pt2.X,pt2.Y-70);
+			var line1 = new Line(pt1,ptTA);
+			var line2 = new Line(pt2,ptTB);
+			var line3 = new Line(ptTA,ptTB);
+			var line4 = new Line(pt1,ptTC);
+			var line5 = new Line(pt2,ptTD);
+			var line6 = new Line(ptTC,ptTD);
+			
+
+			if(!checkLines(line1)&& !checkLines(line2) && !checkLines(line3)){
+				selectCorner(line,line1,line2,line3);
+				hit++;}
+
+			if(!checkLines(line4)&& !checkLines(line5) && !checkLines(line6)){
+				selectCorner(line,line4,line5,line6);
+				hit++;}	
+
+			if(hit==0){return false;}
+			else if(hit ==1){return true;}
+			else {dH = true;return true;}
+		}
+	}
+	function printLine(line)
+	{
+		console.log("("+line.pt1.X,line.pt1.Y+") ("+line.pt2.X,line.pt2.Y+")");
+	}
+	function selectCorner(l1,l2,l3,l4)
+	{
+		var sY = l1.pt1.Y;
+		var sX = l1.pt1.X;
+		var arr = [l1,l2,l3,l4];
+		for(var i = 0;i<arr.length;i++)
+		{
+			if(arr[i].pt1.Y<=sY){
+				sY=arr[i].pt1.Y;}
+			else if(arr[i].pt2.Y<=sY){
+				sY=arr[i].pt2.Y;}
+
+			if(arr[i].pt1.X<=sX){sX=arr[i].pt1.X;
+			}
+			else if(arr[i].pt2.X<=sX){sX= arr[i].pt2.X;
+			}
+		}
+		var pt = new Point(sX,sY);
+		tempCorner.push(new Point(sX,sY));
+	}
+	function box(index,color)
+	{
+		if(!isNaN(index))
+		{
+			var bx  = {ind:index,C:color};
+			return bx;
+		}
+	}
+	function getIndex(pt)
+	{
+		var index = 0;
+		var xo = colorSpots[0].X;
+		var x1 = colorSpots[0].X;
+		var y1 = colorSpots[0].Y;
+		for(var i = 0;i<colorSpots.length;i++)
+		{
+			if(x1==pt.X && y1 ==pt.Y){
+				return index;
+			}
+			index++;
+			if(i!=0&&i%9==0)
+			{
+				y1 += 70;
+				x1 = xo;
+			}
+			else{
+				x1 += 70;
+			}
+			
+
+		}
+	}
+
+	function drawBox(box)
+	{
+		var xo = colorSpots[0].X;
+		var x1 = colorSpots[0].X;
+		var y1 = colorSpots[0].Y;
+		var index = box.ind;
+		for(var i = 0;i<index;i++)
+		{
+			if(i!=0&&i%9==0)
+			{
+				y1 += 70;
+				x1 = xo;
+			}
+			else{
+				x1 += 70;
+			}
+		}
+		ctx.fillStyle = box.C;
+		ctx.fillRect(x1,y1,70,70);
+	}
+	function getColor()
+	{
+		if(p1Move){return p1C;}
+		else{return p2C;}
+	}
+	function checkCord()
+	{
+		p1C = document.getElementById("c1").value;
+		p2C = document.getElementById("c2").value;
+		canvas.addEventListener("mousemove",function(){
+			if(!gameOver){
+				cX = parseInt(event.pageX-elemLeft), 
+				cY = parseInt(event.pageY-elemTop);
+				var	c;
+				if(p1Move){c=p1C;}
+				else{c=p2C;}
+				var toMouse = new Point(cX,cY);
+				if(turn%2==0){
+					tempLine = new Line(last,toMouse,c);
+					update=true;
+				}
+				else{update=false;}
+
+				if(cX>=160&&cX<=290 && cY>=30&&cY<=60){
+					hoverSet = true;
+				}
+				else if(inTerritory!=true)
+					{hoverSet = false;}
+
+				if(cX>=15&&cX<=30&&cY>=15&&cY<=30){
+					gearC = "#fff";
+				}
+				else{gearC = "#7a7a7a";}
+
+				if(rolling == true && cX>=155 && cX<=550 && cY>=30 && cY<=200)
+				{
+					inTerritory = true;
+				}
+				else{inTerritory=false;}
+			}
+
+		},function(){if(turn%2==0){setInterval(drawseg(),10);}});
+	}
+	function isNeighbor(pta,ptb)
+	{
+		var dist = 75;
+		var dx = Math.abs(pta.X-ptb.X);
+		var dy = Math.abs(pta.Y-ptb.Y);
+		if(selected.length>0 && (!equalPts(pta,ptb)))
+		{
+			if( (dx<=dist && dy<=10) || (dy<=dist && dx<=10) ){
+				return true;}
+		}
+		else{
+			return false;}
+	}
+	function equalPts(pta,ptb)
+	{
+		if(pta.X==ptb.X && pta.Y == ptb.Y)
+			return true;
+		return false;
+	}
+
+	function flip()
+	{
+		var c1 = p1Move;
+		var c2 = p2Move;
+		if(c1){c1=false;}
+		else{c1=true;}
+		if(c2){c2=false;}
+		else{c2=true;}
+		p1Move=c1;
+		p2Move=c2;
+	}
+	function checkHit(pta,ptb)
+	{
+		if(Math.abs(pta.X-ptb.X)<10 && Math.abs(pta.Y-ptb.Y)<10)
+			return true; 
+		return false;
+
+	}
+
+
+	function drawLine(line)
+	{
+		if(line!=null){
+			ctx.strokeStyle= line.C;
+			ctx.beginPath();
+			ctx.moveTo(line.pt1.X,line.pt1.Y);
+			ctx.lineWidth = 4;
+			ctx.lineTo(line.pt2.X,line.pt2.Y);
+			ctx.stroke();
+		}
+
+	} 
+
+
+	// OBJECTS
+	function Point(a,b)
+	{
+		if(!isNaN(a)&&!isNaN(b)){
+			var point = {X:a,Y:b};
+			return point;}
+	}
+
+	function Line(a,b,color) //SHOULD JUST USE WHITE LINES
+	{
+		if(!isNaN(a.X)&&!isNaN(a.Y)&&!isNaN(b.X)&&!isNaN(b.Y)){
+			var line = {pt1:a,pt2:b,C:color};
+			return line;
+		}
+	}
+	function coloredPt(pt,color)
+	{
+		var c = {P:pt,C:color};
+		return c;
+	}
+
+	//
+	function drawGear(x,y,a,b,col) //from github
+	{
+		ctx.save();
+		var cx = x,                   
+	    cy  = y,                  
+	    notches = 9,                      
+	    radiusO = b,                    
+	    radiusI = a,                   
+	    taperI  = 15, taper0 = 30;                   
+
+	    pi2     = 2 * Math.PI,            
+	    angle   = pi2 / (notches * 2),    
+	    taperAI = angle * taperI * 0.005, 
+	    taperAO = angle * taper0 * 0.005, 
+	    a       = angle,                  
+	    toggle  = false; 
+		ctx.moveTo(cx + radiusO * Math.cos(taperAO), cy + radiusO * Math.sin(taperAO));
+		for (; a <= pi2; a += angle) {
+
+		    if (toggle) {
+		        ctx.lineTo(cx + radiusI * Math.cos(a - taperAI),
+		                   cy + radiusI * Math.sin(a - taperAI));
+		        ctx.lineTo(cx + radiusO * Math.cos(a + taperAO),
+		                   cy + radiusO * Math.sin(a + taperAO));
+		    }
+		    else {
+		        ctx.lineTo(cx + radiusO * Math.cos(a - taperAO),  // outer line
+		                   cy + radiusO * Math.sin(a - taperAO));
+		        ctx.lineTo(cx + radiusI * Math.cos(a + taperAI),  // inner line
+		                   cy + radiusI * Math.sin(a + taperAI));
+		    }
+
+		    toggle = !toggle;
+
+		}
+
+		// close the final line
+		ctx.closePath();
+
+		ctx.strokeStyle = col.toString();
+		ctx.fillStyle = col.toString();
+		ctx.lineWidth = 2;
+		ctx.stroke();
+		ctx.fill();
+		ctx.fillStyle = "#d6d6d6";
+		ctx.beginPath();
+		ctx.moveTo(cx, cy);
+		ctx.arc(cx, cy, 2, 0, pi2);
+		ctx.closePath();
+		ctx.fill();
+		ctx.restore();
+		//ctx.fillStyle = "#cdcdcd";
+		//ctx.clearRect(170,40,gearX-180,30);
+		//ctx.fillRect(170,40,gearX-180,30);
+	}
+	function strokeHelper()
+	{
+		for(var i = 0; i<5;i++)
+		{
+			ctx.strokeStyle = "#fff";
+			ctx.lineWidth= 1.5;
+			ctx.stroke();
+		}
+	}
+	function drawDots()
+	{
+		var rows = 6;
+		var radius = 8;
+		var dr = Math.floor(70);
+		var cols = 10;
+		var dc = Math.floor(70);
+		var locx;
+		var locy = 40;
+		var count = 0;
+
+		for(var r = 0;r<rows;r++)
+		{
+			locx = 10;
+			locy+=dr;
+
+			for(var c = 0;c<cols;c++){
+				locx+=dc;
+				ctx.beginPath();
+				ctx.arc(locx,locy, radius, 0, Math.PI * 2);
+				
+				
+				if(first){
+					var p = new Point(locx,locy);
+					colorSpots.push(p);
+				}
+				ctx.fillStyle = "#000";
+				ctx.fill();
+				strokeHelper();
+				count++;
+			}
+
+		}
+		first = false;
+	}
+	function drawLines()
+	{
+		for(var i = 0; i<colorLines.length;i++)
+		{
+			drawLine(colorLines[i]);
+		}
+	}
+	function drawBoxes()
+	{
+		for(var i =  0;i<colorBoxes.length;i++)
+		{
+			var bxPt = colorBoxes[i];
+			drawBox(bxPt);
+		}
+	}
+
+	function drawX()
+	{
+		
+		ctx.save();
+		ctx.sStyle = "#333";
+		ctx.lineWidth = 10;
+		ctx.beginPath();
+		ctx.moveTo(165,45);
+		ctx.lineTo(195,75);
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.moveTo(195,45);
+		ctx.lineTo(165,75);
+		ctx.stroke();
+		ctx.restore();
+	}
+	function drawSettings()
+	{
+		ctx.save();
+		ctx.fillStyle = "#d6d6d6";
+		ctx.fillRect(150,30,500,400);
+		drawX();
+		ctx.fillStyle = "#000";
+		ctx.font = "Bold 20pt Arial";
+		ctx.fillText("Settings", 220,130);
+		guiElm.top =  "180px";
+		guiElm.left = "220px";
+		document.getElementById("newG").style.visibility = "initial";
+
+		ctx.restore();
+	}
+	function gearRoll()
+	{
+		if(animate==true){
+			ctx.save();
+			rolling = true;
+			if(gearX<=250){
+				gearX+=15;
+			}
+			else{finish=true;}
+			ctx.restore();
+		}
+
+	}
+	function newGameGUI()
+	{
+		var a,b,c,d;
+		var N = 0;
+		var hoveringPlay = false;
+		var hoveringSet = false;
+		var col ="";
+		if(cX>=345&&cX<=455&&cY>=290&&cY<=355)  {hoveringPlay = true;}
+		else   									{hoveringPlay=false;}
+
+		a=((10+Math.random()*10)/100).toString();
+		b=((20+Math.random()*50)/100).toString();
+		c=((55+Math.random()*15)/100).toString();
+		d=((70+Math.random()*30)/100).toString();
+
+		ctx.fillStyle = "#d6d6d6";
+		ctx.fillRect(150,30,500,400); // background
+		ctx.lineWidth = 8;
+		ctx.save();
+		
+		if(hoveringPlay) {
+			ctx.fillStyle = "#333"; 
+		}
+		else{
+			ctx.fillStyle = "#fff";
+		}
+
+		var grad = ctx.createRadialGradient(280,330,5,640,300,140);
+		grad.addColorStop(a,p1C);
+		grad.addColorStop(b,p2C);
+		grad.addColorStop(c,p1C);
+		grad.addColorStop(d,p2C);
+		ctx.strokeStyle = grad;
+		ctx.fillRect(350,300,100,50);
+		ctx.strokeRect(350,300,100,50);
+
+		var grad2 = ctx.createLinearGradient(150,200,640,300);
+		grad2.addColorStop(d,p1C);
+		grad2.addColorStop(c,p2C);
+		grad2.addColorStop(b,p1C);
+		grad2.addColorStop(a,p2C);
+		ctx.font = "Bold 40pt Veranda";
+		ctx.fillStyle=grad2;
+		ctx.fillText("DOTS AND BOXES", 172,200);
+		ctx.fillStyle = "black";
+		ctx.fillText("DOTS AND BOXES", 170,200);
+
+
+		ctx.restore();
+
+		ctx.strokeStyle = "#333";
+		if(hoveringPlay){
+			ctx.fillStyle = "#fff";}
+		else{ctx.fillStyle = "#000";}
+		ctx.font = "Italic 20pt Helvetica";
+		ctx.fillText("Play",370,335);
+		if(hoverSet == true){ 
+			animate = true;
+			col = "#333";
+
+		}
+		else if(hoverSet==false && inTerritory==false)
+		{
+			ctx.fillStyle = "#000"; 
+			rolling=false;
+			col="#000"; 
+			clickSetting = false; gearX = 180; finish = false;  inTerritory = false; animate = false;//clear animation 
+		} 
+		ctx.font = "bold 13pt Impact";
+		ctx.fillStyle = col;
+		
+		
+
+
+		drawGear(gearX,48,4,7,col);
+		if(hoverSet==true){
+			ctx.fillStyle = "#d6d6d6";
+			ctx.fillRect(170,40,gearX-180,30);
+
+		}
+
+		if(finish==true){
+			ctx.fillStyle=col;
+			ctx.fillText("Settings",180,55);
+			clickSetting = true;}
+
+
+	}
+	function closeGuI()
+	{
+		showBoard = true;
+		showSetting = false;
+		newGame = false;
+		clickSetting = false;
+		handleStartUP();
+	}
+	function handleStartUP()
+	{
+		p1C = document.getElementById("c1").value;
+		p2C = document.getElementById("c2").value;
+		var re = document.getElementById("newG").style;
+
+		if(showSetting){
+			if(newGame){
+				newGameGUI();
+			}
+			if(gameOver){
+				gameOverGUI();
+			}
+			
+		}
+		if(clickSetting == true){
+				document.getElementById("gui").style.visibility = "initial";
+
+				var op = document.getElementById("opts");
+				var sel = op.options[op.selectedIndex].value;	
+				if(sel=="no"){ratioBars=false;ratioNum=false;}	
+				else if(sel=="bar"){ratioBars=true;ratioNum=false;}
+				else if(sel=="num"){ratioNum=true;ratioBars=false;}
+		}
+		else{
+				document.getElementById("gui").style.visibility = "hidden";
+				document.getElementById("newG").style.visibility = "hidden";
+
+		}
+		if(gameOver)
+		{
+			re.visibility = "initial";
+		}
+
+	}
+
+	function reset()
+	{
+		console.log('r');
+		colorLines.length=0;
+		colorBoxes.length=0;
+		showSetting=false;
+		turn = 1;
+		dH = false;
+		dV = false;
+		cX = cY = 0;
+		selected.length=0;
+		closeGuI();
+		tempCorner.length=0;
+		hoverSet = false;
+		rolling = false;
+		currentScoreA=currentScoreB=0;
+		gameOver=false;
+
+	}
+
+	function refresh()
+	{
+		
+
+		handleStartUP();
+		
+		if(showBoard){
+
+				//document.getElementById("gui").style.visibility = "hidden";
+				ctx.clearRect(0,0,can.width,can.height);
+				drawGear(20,20,4,7,gearC);
+				if(update)
+					drawLine(tempLine);
+				drawLines();
+				if(colorBoxes.length>0)
+					drawBoxes();
+				if(ratioBars==true)
+					drawRatioBar(true);
+				else if(ratioNum==true)
+					drawRatioBar(false);
+				drawDots();
+				drawScore();
+				handleStartUP();
+
+				if(showSetting){
+					drawSettings();
+					clickSetting = true;
+				}
+		}
+
+	}
+	var ratioBars = false, ratioNum = false;
+	var animate = false;
+	var gameOver = false;
+	var inTerritory = false;
+	var newGame = true;
+	var showBoard = false;
+	var showSetting = true;
+	var AnimateGear = setInterval(gearRoll,60);
+	var alarm = setInterval(refresh,100);
+
+
+	</script>
+
+</html>
