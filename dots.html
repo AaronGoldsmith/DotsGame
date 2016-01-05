@@ -63,8 +63,6 @@
 	var turn = 1;
 	var p1Move, p2Move;
 	var lastChosen;
-	var dH = false;
-	var dV = false;
 	var updateLine = setInterval(checkCord,50);
 	var cX = cY = 0;
 	var gearX = 180, gearY = 48;
@@ -118,13 +116,7 @@
 		ctx.restore();
 
 	}
-	function gameOverGUI()
-	{
-		gameOver=true;
-		//ctx.fillStyle = "#d6d6d6";
-		//ctx.fillRect(150,30,500,400);
-		clickSetting = true;
-	}
+
 	function drawRatioBar(isBar)
 	{
 		if(isBar){ratioNum=false;}
@@ -572,7 +564,7 @@
 			return point;}
 	}
 
-	function Line(a,b,color) //SHOULD JUST USE WHITE LINES
+	function Line(a,b,color) 
 	{
 		if(!isNaN(a.X)&&!isNaN(a.Y)&&!isNaN(b.X)&&!isNaN(b.Y)){
 			var line = {pt1:a,pt2:b,C:color};
@@ -637,9 +629,6 @@
 		ctx.closePath();
 		ctx.fill();
 		ctx.restore();
-		//ctx.fillStyle = "#cdcdcd";
-		//ctx.clearRect(170,40,gearX-180,30);
-		//ctx.fillRect(170,40,gearX-180,30);
 	}
 	function strokeHelper()
 	{
@@ -852,7 +841,8 @@
 				newGameGUI();
 			}
 			if(gameOver){
-				gameOverGUI();
+				gameOver=true;
+				clickSetting = true;
 			}
 			
 		}
@@ -879,7 +869,6 @@
 
 	function reset()
 	{
-		console.log('r');
 		colorLines.length=0;
 		colorBoxes.length=0;
 		showSetting=false;
@@ -905,7 +894,6 @@
 		
 		if(showBoard){
 
-				//document.getElementById("gui").style.visibility = "hidden";
 				ctx.clearRect(0,0,can.width,can.height);
 				drawGear(20,20,4,7,gearC);
 				if(update)
@@ -928,7 +916,11 @@
 		}
 
 	}
+
+	//bools and intervals
 	var ratioBars = false, ratioNum = false;
+	var dH = false;
+	var dV = false;
 	var animate = false;
 	var gameOver = false;
 	var inTerritory = false;
